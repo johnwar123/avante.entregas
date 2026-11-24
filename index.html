@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avante Entregas</title>
+  <script src="https://tailwindcss.com"></script>
+  <script src="https://jsdelivr.net"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans pb-10">
+
+  <!-- Cabeçalho -->
+  <header class="bg-emerald-600 text-white p-4 shadow-md flex justify-between items-center">
+    <h1 class="text-xl font-bold tracking-wide">⚡ Avante Entregas</h1>
+    <button id="btnSair" onclick="sair()" class="hidden bg-emerald-800 px-3 py-1 rounded text-sm">Sair</button>
+  </header>
+
+  <main class="max-w-md mx-auto p-4">
+    <!-- TELA DE LOGIN / CADASTRO -->
+    <div id="telaAuth" class="bg-white p-6 rounded-xl shadow-md mt-4">
+      <div class="flex border-b mb-4">
+        <button id="tabLogin" onclick="mudarAba('login')" class="w-1/2 py-2 font-bold border-b-2 border-emerald-600 text-emerald-600">Entrar</button>
+        <button id="tabCadastro" onclick="mudarAba('cadastro')" class="w-1/2 py-2 font-bold text-gray-400">Criar Conta</button>
+      </div>
+
+      <form id="formAuth" onsubmit="autenticar(event)" class="space-y-3">
+        <div id="camposCadastro" class="hidden space-y-3">
+          <input type="text" id="nome" placeholder="Nome da Loja ou do Entregador" class="w-full p-3 border rounded-lg">
+          <input type="tel" id="telefone" placeholder="WhatsApp (com DDD)" class="w-full p-3 border rounded-lg">
+          <select id="tipo" class="w-full p-3 border rounded-lg bg-white">
+            <option value="loja">Sou Estabelecimento (Loja)</option>
+            <option value="entregador">Sou Entregador (Motoboy)</option>
+          </select>
+        </div>
+
+        <input type="email" id="email" placeholder="Seu E-mail" required class="w-full p-3 border rounded-lg">
+        <input type="password" id="senha" placeholder="Sua Senha (mín. 6 dígitos)" required class="w-full p-3 border rounded-lg">
+
+        <button type="submit" id="btnSubmitAuth" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg hover:bg-emerald-700">
+          Entrar no Sistema
+        </button>
+      </form>
+      <p id="msgAuth" class="text-center text-sm text-red-600 mt-3"></p>
+    </div>
+
+    <!-- PAINEL DA LOJA -->
+    <div id="painelLoja" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow flex justify-between items-center">
+        <div>
+          <p class="text-xs text-gray-500">Estabelecimento</p>
+          <p id="lojaNome" class="font-bold text-lg"></p>
+        </div>
+        <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">Loja Ativa</span>
+      </div>
+
+      <form onsubmit="criarEntrega(event)" class="bg-white p-5 rounded-xl shadow space-y-3">
+        <h2 class="font-bold text-gray-700 border-b pb-2">📦 Chamar Entregador</h2>
+        <input type="text" id="coleta" placeholder="Endereço de Coleta (Sua Loja)" required class="w-full p-3 border rounded-lg">
+        <input type="text" id="entrega" placeholder="Endereço de Entrega (Cliente)" required class="w-full p-3 border rounded-lg">
+        <div>
+          <label class="text-xs text-gray-500">Valor da Corrida (R$)</label>
+          <input type="number" step="0.50" min="5" id="valor" placeholder="Ex: 10.00" required class="w-full p-3 border rounded-lg">
+        </div>
+        <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg shadow hover:bg-emerald-700">
+          Solicitar Entrega Agora
+        </button>
+      </form>
+
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h3 class="font-bold text-gray-700 mb-3">Suas Entregas Recentes</h3>
+        <div id="listaEntregasLoja" class="space-y-2 text-sm"></div>
+      </div>
+    </div>
+
+    <!-- PAINEL DO ENTREGADOR -->
+    <div id="painelEntregador" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow flex justify-between items-center">
+        <div>
+          <p class="text-xs text-gray-500">Entregador</p>
+          <p id="motoboyNome" class="font-bold text-lg"></p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-gray-500">Créditos (Taxa 10%)</p>
+          <p id="motoboySaldo" class="font-bold text-lg text-emerald-600">R$ 0,00</p>
+        </div>
+      </div>
+
+      <div id="avisoSaldo" class="hidden bg-red-100 border border-red-400 text-red-700 p-3 rounded-lg text-sm">
+        ⚠️ Seu saldo está baixo. Recarregue créditos via Pix com o administrador para aceitar novas corridas.
+      </div>
+
+      <!-- Corrida em andamento -->
+      <div id="boxCorridaAtual" class="hidden bg-amber-50 border-2 border-amber-400 p-4 rounded-xl shadow space-y-3">
+        <h3 class="font-bold text-amber-800">🏍️ Corrida em Andamento</h3>
+        <div id="detalhesCorridaAtual" class="text-sm space-y-1"></div>
+      </div>
+
+      <!-- Mural de entregas disponíveis -->
+      <div class="bg-white p-4 rounded-xl shadow">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-gray-700">🔔 Corridas Disponíveis</h3>
+          <span class="animate-pulse h-3 w-3 rounded-full bg-green-500"></span>
+        </div>
+        <div id="listaDisponiveis" class="space-y-3">
+          <p class="text-gray-400 text-sm text-center py-4">Aguardando chamadas...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ==========================================
+    // COLE SUA CHAVE DO SUPABASE ABAIXO:
+    // ==========================================
+    const SUPABASE_URL = 'https://supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvd3RubXJteGJzcHpnb3drdGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NzQ1NTAsImV4cCI6MjExMTA1MDU1MH0.8gRjXSg9fciVWXth5gJgNhoxwy2Ouxw86ic2JhJRUa8';
+    // ==========================================
+
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let modoAuth = 'login';
+    let usuarioAtual = null;
+    let perfilAtual = null;
+
+    // Som de alerta gerado via navegador (sem precisar de arquivo externo)
+    function tocarAlerta() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } catch (e) {}
+    }
+
+    function mudarAba(modo) {
+      modoAuth = modo;
+      document.getElementById('camposCadastro').classList.toggle('hidden', modo === 'login');
+      document.getElementById('btnSubmitAuth').innerText = modo === 'login' ? 'Entrar no Sistema' : 'Cadastrar Agora';
+      document.getElementById('tabLogin').className = modo === 'login' ? 'w-1/2 py-2 font-bold border-b-2 border-emerald-600 text-emerald-600' : 'w-1/2 py-2 font-bold text-gray-400';
+      document.getElementById('tabCadastro').className = modo === 'cadastro' ? 'w-1/2 py-2 font-bold border-b-2 border-emerald-600 text-emerald-600' : 'w-1/2 py-2 font-bold text-gray-400';
+    }
+
+    async function autenticar(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('senha').value;
+      const msg = document.getElementById('msgAuth');
+      msg.innerText = 'Carregando...';
+
+      if (modoAuth === 'cadastro') {
+        const nome = document.getElementById('nome').value;
+        const telefone = document.getElementById('telefone').value;
+        const tipo = document.getElementById('tipo').value;
+
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) return msg.innerText = 'Erro: ' + error.message;
+
+        // Dá R$ 10,00 de bônus inicial para entregador testar
+        const saldoInicial = tipo === 'entregador' ? 10.00 : 0;
+
+        await sb.from('perfis').insert([{
+          id: data.user.id, nome, telefone, tipo, saldo_creditos: saldoInicial, aprovado: true
+        }]);
+        msg.innerText = '';
+        iniciarSessao(data.user);
+      } else {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) return msg.innerText = 'E-mail ou senha incorretos.';
+        msg.innerText = '';
+        iniciarSessao(data.user);
+      }
+    }
+
+    async function iniciarSessao(user) {
+      usuarioAtual = user;
+      const { data } = await sb.from('perfis').select('*').eq('id', user.id).single();
+      perfilAtual = data;
+
+      document.getElementById('telaAuth').classList.add('hidden');
+      document.getElementById('btnSair').classList.remove('hidden');
+
+      if (perfilAtual.tipo === 'loja') {
+        document.getElementById('painelLoja').classList.remove('hidden');
+        document.getElementById('lojaNome').innerText = perfilAtual.nome;
+        carregarEntregasLoja();
+        escutarEntregas();
+      } else {
+        document.getElementById('painelEntregador').classList.remove('hidden');
+        atualizarTelaMotoboy();
+        escutarEntregas();
+      }
+    }
+
+    async function sair() {
+      await sb.auth.signOut();
+      location.reload();
+    }
+
+    // --- FUNÇÕES DA LOJA ---
+    async function criarEntrega(e) {
+      e.preventDefault();
+      const coleta = document.getElementById('coleta').value;
+      const entrega = document.getElementById('entrega').value;
+      const valor = parseFloat(document.getElementById('valor').value);
+      const comissao = parseFloat((valor * 0.10).toFixed(2)); // 10% de comissão
+
+      const { error } = await sb.from('entregas').insert([{
+        loja_id: usuarioAtual.id,
+        endereco_coleta: coleta,
+        endereco_entrega: entrega,
+        valor_corrida: valor,
+        comissao_app: comissao,
+        status: 'pendente'
+      }]);
+
+      if (!error) {
+        e.target.reset();
+        carregarEntregasLoja();
+      }
+    }
+
+    async function carregarEntregasLoja() {
