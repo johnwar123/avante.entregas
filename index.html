@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avante Entregas</title>
-  <script src="https://tailwindcss.com"></script>
-  <script src="https://jsdelivr.net"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans pb-10">
 
-  <!-- Cabeçalho -->
   <header class="bg-emerald-600 text-white p-4 shadow-md flex justify-between items-center">
-    <h1 class="text-xl font-bold tracking-wide">⚡ Avante Entregas</h1>
+    <h1 class="text-xl font-bold tracking-wide"> Avante Entregas</h1>
     <button id="btnSair" onclick="sair()" class="hidden bg-emerald-800 px-3 py-1 rounded text-sm">Sair</button>
   </header>
 
   <main class="max-w-md mx-auto p-4">
-    <!-- TELA DE LOGIN / CADASTRO -->
+
+    <!-- LOGIN / CADASTRO -->
     <div id="telaAuth" class="bg-white p-6 rounded-xl shadow-md mt-4">
       <div class="flex border-b mb-4">
         <button id="tabLogin" onclick="mudarAba('login')" class="w-1/2 py-2 font-bold border-b-2 border-emerald-600 text-emerald-600">Entrar</button>
@@ -32,13 +32,9 @@
             <option value="entregador">Sou Entregador (Motoboy)</option>
           </select>
         </div>
-
         <input type="email" id="email" placeholder="Seu E-mail" required class="w-full p-3 border rounded-lg">
-        <input type="password" id="senha" placeholder="Sua Senha (mín. 6 dígitos)" required class="w-full p-3 border rounded-lg">
-
-        <button type="submit" id="btnSubmitAuth" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg hover:bg-emerald-700">
-          Entrar no Sistema
-        </button>
+        <input type="password" id="senha" placeholder="Sua Senha (mín. 6 dígitos)" required minlength="6" class="w-full p-3 border rounded-lg">
+        <button type="submit" id="btnSubmitAuth" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg hover:bg-emerald-700">Entrar no Sistema</button>
       </form>
       <p id="msgAuth" class="text-center text-sm text-red-600 mt-3"></p>
     </div>
@@ -54,16 +50,15 @@
       </div>
 
       <form onsubmit="criarEntrega(event)" class="bg-white p-5 rounded-xl shadow space-y-3">
-        <h2 class="font-bold text-gray-700 border-b pb-2">📦 Chamar Entregador</h2>
+        <h2 class="font-bold text-gray-700 border-b pb-2"> Chamar Entregador</h2>
         <input type="text" id="coleta" placeholder="Endereço de Coleta (Sua Loja)" required class="w-full p-3 border rounded-lg">
         <input type="text" id="entrega" placeholder="Endereço de Entrega (Cliente)" required class="w-full p-3 border rounded-lg">
         <div>
           <label class="text-xs text-gray-500">Valor da Corrida (R$)</label>
           <input type="number" step="0.50" min="5" id="valor" placeholder="Ex: 10.00" required class="w-full p-3 border rounded-lg">
         </div>
-        <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg shadow hover:bg-emerald-700">
-          Solicitar Entrega Agora
-        </button>
+        <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg shadow hover:bg-emerald-700">Solicitar Entrega Agora</button>
+        <p id="msgLoja" class="text-center text-sm text-red-600"></p>
       </form>
 
       <div class="bg-white p-4 rounded-xl shadow">
@@ -86,42 +81,48 @@
       </div>
 
       <div id="avisoSaldo" class="hidden bg-red-100 border border-red-400 text-red-700 p-3 rounded-lg text-sm">
-        ⚠️ Seu saldo está baixo. Recarregue créditos via Pix com o administrador para aceitar novas corridas.
+         Seu saldo está baixo. Recarregue créditos via Pix com o administrador para aceitar novas corridas.
       </div>
 
-      <!-- Corrida em andamento -->
       <div id="boxCorridaAtual" class="hidden bg-amber-50 border-2 border-amber-400 p-4 rounded-xl shadow space-y-3">
-        <h3 class="font-bold text-amber-800">🏍️ Corrida em Andamento</h3>
-        <div id="detalhesCorridaAtual" class="text-sm space-y-1"></div>
+        <h3 class="font-bold text-amber-800"> Corrida em Andamento</h3>
+        <div id="detalhesCorridaAtual" class="text-sm space-y-2"></div>
       </div>
 
-      <!-- Mural de entregas disponíveis -->
       <div class="bg-white p-4 rounded-xl shadow">
         <div class="flex justify-between items-center mb-3">
-          <h3 class="font-bold text-gray-700">🔔 Corridas Disponíveis</h3>
+          <h3 class="font-bold text-gray-700"> Corridas Disponíveis</h3>
           <span class="animate-pulse h-3 w-3 rounded-full bg-green-500"></span>
         </div>
         <div id="listaDisponiveis" class="space-y-3">
           <p class="text-gray-400 text-sm text-center py-4">Aguardando chamadas...</p>
         </div>
+        <p id="msgMotoboy" class="text-center text-sm text-red-600 mt-2"></p>
       </div>
     </div>
   </main>
 
   <script>
-    // ==========================================
-    // COLE SUA CHAVE DO SUPABASE ABAIXO:
-    // ==========================================
-    const SUPABASE_URL = 'https://supabase.co';
+    const SUPABASE_URL = 'https://powtnmrmxbspzgowktlv.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvd3RubXJteGJzcHpnb3drdGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NzQ1NTAsImV4cCI6MjExMTA1MDU1MH0.8gRjXSg9fciVWXth5gJgNhoxwy2Ouxw86ic2JhJRUa8';
-    // ==========================================
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let modoAuth = 'login';
     let usuarioAtual = null;
     let perfilAtual = null;
+    let canal = null;
 
-    // Som de alerta gerado via navegador (sem precisar de arquivo externo)
+    const $ = (id) => document.getElementById(id);
+    const brl = (n) => 'R$ ' + Number(n).toFixed(2).replace('.', ',');
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const STATUS = {
+      pendente: ['Aguardando entregador', 'bg-yellow-100 text-yellow-800'],
+      aceita: ['Entregador a caminho', 'bg-blue-100 text-blue-800'],
+      coletada: ['Em rota de entrega', 'bg-indigo-100 text-indigo-800'],
+      concluida: ['Concluída', 'bg-emerald-100 text-emerald-800'],
+      cancelada: ['Cancelada', 'bg-gray-200 text-gray-600']
+    };
+
     function tocarAlerta() {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -136,33 +137,33 @@
 
     function mudarAba(modo) {
       modoAuth = modo;
-      document.getElementById('camposCadastro').classList.toggle('hidden', modo === 'login');
-      document.getElementById('btnSubmitAuth').innerText = modo === 'login' ? 'Entrar no Sistema' : 'Cadastrar Agora';
-      document.getElementById('tabLogin').className = modo === 'login' ? 'w-1/2 py-2 font-bold border-b-2 border-emerald-600 text-emerald-600' : 'w-1/2 py-2 font-bold text-gray-400';
-      document.getElementById('tabCadastro').className = modo === 'cadastro' ? 'w-1/2 py-2 font-bold border-b-2 border-emerald-600 text-emerald-600' : 'w-1/2 py-2 font-bold text-gray-400';
+      $('camposCadastro').classList.toggle('hidden', modo === 'login');
+      $('btnSubmitAuth').innerText = modo === 'login' ? 'Entrar no Sistema' : 'Cadastrar Agora';
+      const ativo = 'w-1/2 py-2 font-bold border-b-2 border-emerald-600 text-emerald-600';
+      const inativo = 'w-1/2 py-2 font-bold text-gray-400';
+      $('tabLogin').className = modo === 'login' ? ativo : inativo;
+      $('tabCadastro').className = modo === 'cadastro' ? ativo : inativo;
     }
 
     async function autenticar(e) {
       e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('senha').value;
-      const msg = document.getElementById('msgAuth');
+      const email = $('email').value.trim();
+      const password = $('senha').value;
+      const msg = $('msgAuth');
       msg.innerText = 'Carregando...';
 
       if (modoAuth === 'cadastro') {
-        const nome = document.getElementById('nome').value;
-        const telefone = document.getElementById('telefone').value;
-        const tipo = document.getElementById('tipo').value;
+        const nome = $('nome').value.trim();
+        const telefone = $('telefone').value.trim();
+        const tipo = $('tipo').value;
+        if (!nome || !telefone) return msg.innerText = 'Preencha nome e WhatsApp.';
 
-        const { data, error } = await sb.auth.signUp({ email, password });
+        const { data, error } = await sb.auth.signUp({
+          email, password,
+          options: { data: { nome, telefone, tipo } }
+        });
         if (error) return msg.innerText = 'Erro: ' + error.message;
-
-        // Dá R$ 10,00 de bônus inicial para entregador testar
-        const saldoInicial = tipo === 'entregador' ? 10.00 : 0;
-
-        await sb.from('perfis').insert([{
-          id: data.user.id, nome, telefone, tipo, saldo_creditos: saldoInicial, aprovado: true
-        }]);
+        if (!data.session) return msg.innerText = 'Conta criada! Confirme seu e-mail e depois entre.';
         msg.innerText = '';
         iniciarSessao(data.user);
       } else {
@@ -173,24 +174,39 @@
       }
     }
 
+    async function buscarPerfil(id) {
+      for (let i = 0; i < 5; i++) {               // o trigger pode demorar uns instantes
+        const { data } = await sb.from('perfis').select('*').eq('id', id).maybeSingle();
+        if (data) return data;
+        await new Promise(r => setTimeout(r, 500));
+      }
+      return null;
+    }
+
     async function iniciarSessao(user) {
       usuarioAtual = user;
-      const { data } = await sb.from('perfis').select('*').eq('id', user.id).single();
-      perfilAtual = data;
+      perfilAtual = await buscarPerfil(user.id);
+      if (!perfilAtual) {
+        $('msgAuth').innerText = 'Perfil não encontrado. Tente entrar novamente.';
+        return sb.auth.signOut();
+      }
 
-      document.getElementById('telaAuth').classList.add('hidden');
-      document.getElementById('btnSair').classList.remove('hidden');
+      $('telaAuth').classList.add('hidden');
+      $('btnSair').classList.remove('hidden');
 
       if (perfilAtual.tipo === 'loja') {
-        document.getElementById('painelLoja').classList.remove('hidden');
-        document.getElementById('lojaNome').innerText = perfilAtual.nome;
+        $('painelLoja').classList.remove('hidden');
+        $('lojaNome').innerText = perfilAtual.nome;
         carregarEntregasLoja();
-        escutarEntregas();
-      } else {
-        document.getElementById('painelEntregador').classList.remove('hidden');
+      } else if (perfilAtual.tipo === 'entregador') {
+        $('painelEntregador').classList.remove('hidden');
+        $('motoboyNome').innerText = perfilAtual.nome;
         atualizarTelaMotoboy();
-        escutarEntregas();
+      } else {
+        $('msgAuth').innerText = 'Painel admin ainda não disponível aqui.';
+        return;
       }
+      escutarEntregas();
     }
 
     async function sair() {
@@ -198,27 +214,138 @@
       location.reload();
     }
 
-    // --- FUNÇÕES DA LOJA ---
+    // ---------- TEMPO REAL ----------
+    function escutarEntregas() {
+      if (canal) sb.removeChannel(canal);
+      canal = sb.channel('entregas-rt')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'entregas' }, (payload) => {
+          if (perfilAtual.tipo === 'loja') {
+            carregarEntregasLoja();
+          } else {
+            if (payload.eventType === 'INSERT' && payload.new.status === 'pendente') tocarAlerta();
+            atualizarTelaMotoboy();
+          }
+        })
+        .subscribe();
+    }
+
+    // ---------- LOJA ----------
     async function criarEntrega(e) {
       e.preventDefault();
-      const coleta = document.getElementById('coleta').value;
-      const entrega = document.getElementById('entrega').value;
-      const valor = parseFloat(document.getElementById('valor').value);
-      const comissao = parseFloat((valor * 0.10).toFixed(2)); // 10% de comissão
-
+      const msg = $('msgLoja');
+      msg.innerText = '';
       const { error } = await sb.from('entregas').insert([{
         loja_id: usuarioAtual.id,
-        endereco_coleta: coleta,
-        endereco_entrega: entrega,
-        valor_corrida: valor,
-        comissao_app: comissao,
-        status: 'pendente'
+        endereco_coleta: $('coleta').value.trim(),
+        endereco_entrega: $('entrega').value.trim(),
+        valor_corrida: parseFloat($('valor').value)
       }]);
-
-      if (!error) {
-        e.target.reset();
-        carregarEntregasLoja();
-      }
+      if (error) return msg.innerText = 'Erro: ' + error.message;
+      e.target.reset();
+      carregarEntregasLoja();
     }
 
     async function carregarEntregasLoja() {
+      const { data, error } = await sb.from('entregas').select('*')
+        .eq('loja_id', usuarioAtual.id)
+        .order('criado_em', { ascending: false }).limit(20);
+      const lista = $('listaEntregasLoja');
+      if (error) return lista.innerHTML = '<p class="text-red-600">Erro ao carregar.</p>';
+      if (!data.length) return lista.innerHTML = '<p class="text-gray-400 text-center py-2">Nenhuma entrega ainda.</p>';
+
+      lista.innerHTML = data.map(en => {
+        const [rotulo, cor] = STATUS[en.status] || [en.status, 'bg-gray-100'];
+        return `
+          <div class="border rounded-lg p-3 space-y-1">
+            <div class="flex justify-between items-center">
+              <span class="font-bold">${brl(en.valor_corrida)}</span>
+              <span class="text-xs font-bold px-2 py-1 rounded-full ${cor}">${rotulo}</span>
+            </div>
+            <p class="text-gray-600"> ${esc(en.endereco_coleta)}</p>
+            <p class="text-gray-600"> ${esc(en.endereco_entrega)}</p>
+            ${en.status === 'pendente'
+              ? `<button onclick="cancelarEntrega(${en.id})" class="text-red-600 text-xs underline">Cancelar</button>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    async function cancelarEntrega(id) {
+      if (!confirm('Cancelar esta entrega?')) return;
+      const { error } = await sb.rpc('atualizar_status_entrega', { p_id: id, p_status: 'cancelada' });
+      if (error) alert('Erro: ' + error.message);
+      carregarEntregasLoja();
+    }
+
+    // ---------- ENTREGADOR ----------
+    async function atualizarTelaMotoboy() {
+      // saldo atualizado
+      const { data: p } = await sb.from('perfis').select('*').eq('id', usuarioAtual.id).single();
+      if (p) perfilAtual = p;
+      $('motoboySaldo').innerText = brl(perfilAtual.saldo_creditos);
+      $('avisoSaldo').classList.toggle('hidden', Number(perfilAtual.saldo_creditos) >= 1);
+
+      // corrida em andamento
+      const { data: atual } = await sb.from('entregas').select('*')
+        .eq('entregador_id', usuarioAtual.id).in('status', ['aceita', 'coletada'])
+        .order('criado_em', { ascending: false }).limit(1);
+      const emCorrida = atual && atual.length > 0;
+      $('boxCorridaAtual').classList.toggle('hidden', !emCorrida);
+
+      if (emCorrida) {
+        const c = atual[0];
+        const proximo = c.status === 'aceita' ? ['coletada', ' Já coletei o pedido'] : ['concluida', ' Entrega concluída'];
+        $('detalhesCorridaAtual').innerHTML = `
+          <p><b>Valor:</b> ${brl(c.valor_corrida)}</p>
+          <p> <b>Coleta:</b> ${esc(c.endereco_coleta)}</p>
+          <p> <b>Entrega:</b> ${esc(c.endereco_entrega)}</p>
+          <button onclick="avancarCorrida(${c.id}, '${proximo[0]}')"
+            class="w-full bg-amber-500 text-white font-bold py-3 rounded-lg">${proximo[1]}</button>`;
+      }
+
+      // disponíveis
+      const lista = $('listaDisponiveis');
+      if (emCorrida) {
+        lista.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Finalize a corrida atual para ver novas chamadas.</p>';
+        return;
+      }
+      const { data: disp } = await sb.from('entregas').select('*')
+        .eq('status', 'pendente').order('criado_em', { ascending: true });
+      if (!disp || !disp.length) {
+        lista.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Aguardando chamadas...</p>';
+        return;
+      }
+      lista.innerHTML = disp.map(c => `
+        <div class="border rounded-lg p-3 space-y-1 text-sm">
+          <div class="flex justify-between">
+            <span class="font-bold text-emerald-700">${brl(c.valor_corrida)}</span>
+            <span class="text-xs text-gray-500">Taxa: ${brl(c.comissao_app)}</span>
+          </div>
+          <p class="text-gray-600"> ${esc(c.endereco_coleta)}</p>
+          <p class="text-gray-600"> ${esc(c.endereco_entrega)}</p>
+          <button onclick="aceitarCorrida(${c.id})"
+            class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg mt-1">Aceitar Corrida</button>
+        </div>`).join('');
+    }
+
+    async function aceitarCorrida(id) {
+      $('msgMotoboy').innerText = '';
+      const { error } = await sb.rpc('aceitar_entrega', { p_id: id });
+      if (error) $('msgMotoboy').innerText = error.message;
+      atualizarTelaMotoboy();
+    }
+
+    async function avancarCorrida(id, status) {
+      $('msgMotoboy').innerText = '';
+      const { error } = await sb.rpc('atualizar_status_entrega', { p_id: id, p_status: status });
+      if (error) $('msgMotoboy').innerText = error.message;
+      atualizarTelaMotoboy();
+    }
+
+    // Mantém login ao recarregar a página
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) iniciarSessao(session.user);
+    })();
+  </script>
+</body>
+</html>
