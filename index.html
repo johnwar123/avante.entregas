@@ -30,6 +30,7 @@
           <select id="tipo" class="w-full p-3 border rounded-lg bg-white">
             <option value="loja">Sou Estabelecimento (Loja)</option>
             <option value="entregador">Sou Entregador (Motoboy)</option>
+            <option value="admin">Sou Administrador</option>
           </select>
         </div>
         <input type="email" id="email" placeholder="Seu E-mail" required class="w-full p-3 border rounded-lg">
@@ -100,6 +101,38 @@
         <p id="msgMotoboy" class="text-center text-sm text-red-600 mt-2"></p>
       </div>
     </div>
+
+    <!-- PAINEL DO ADMINISTRADOR -->
+    <div id="painelAdmin" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-xl shadow flex justify-between items-center">
+        <div>
+          <p class="text-xs text-gray-500">Administrador</p>
+          <p id="adminNome" class="font-bold text-lg"></p>
+        </div>
+        <span class="bg-gray-100 text-gray-800 text-xs font-bold px-3 py-1 rounded-full">Sistema</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500 mb-1">Total de Entregas</p>
+          <p id="adminTotalEntregas" class="font-bold text-2xl text-gray-800">0</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <p class="text-xs text-gray-500 mb-1">Receita Total (R$)</p>
+          <p id="adminReceitaTotal" class="font-bold text-2xl text-emerald-600">R$ 0,00</p>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h3 class="font-bold text-gray-700 mb-3">Todas as Entregas</h3>
+        <div id="listaTodasEntregas" class="space-y-2 text-sm"></div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h3 class="font-bold text-gray-700 mb-3">Usuários Cadastrados</h3>
+        <div id="listaUsuarios" class="space-y-2 text-sm"></div>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -113,7 +146,7 @@
     let canal = null;
 
     const $ = (id) => document.getElementById(id);
-    const brl = (n) => 'R$ ' + Number(n).toFixed(2).replace('.', ',');
+    const brl = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const STATUS = {
       pendente: ['Aguardando entregador', 'bg-yellow-100 text-yellow-800'],
@@ -175,7 +208,7 @@
     }
 
     async function buscarPerfil(id) {
-      for (let i = 0; i < 5; i++) {               // o trigger pode demorar uns instantes
+      for (let i = 0; i < 5; i++) {
         const { data } = await sb.from('perfis').select('*').eq('id', id).maybeSingle();
         if (data) return data;
         await new Promise(r => setTimeout(r, 500));
@@ -202,8 +235,12 @@
         $('painelEntregador').classList.remove('hidden');
         $('motoboyNome').innerText = perfilAtual.nome;
         atualizarTelaMotoboy();
+      } else if (perfilAtual.tipo === 'admin') {
+        $('painelAdmin').classList.remove('hidden');
+        $('adminNome').innerText = perfilAtual.nome;
+        carregarAdmin();
       } else {
-        $('msgAuth').innerText = 'Painel admin ainda não disponível aqui.';
+        $('msgAuth').innerText = 'Tipo de usuário não reconhecido.';
         return;
       }
       escutarEntregas();
@@ -221,9 +258,11 @@
         .on('postgres_changes', { event: '*', schema: 'public', table: 'entregas' }, (payload) => {
           if (perfilAtual.tipo === 'loja') {
             carregarEntregasLoja();
-          } else {
+          } else if (perfilAtual.tipo === 'entregador') {
             if (payload.eventType === 'INSERT' && payload.new.status === 'pendente') tocarAlerta();
             atualizarTelaMotoboy();
+          } else if (perfilAtual.tipo === 'admin') {
+            carregarAdmin();
           }
         })
         .subscribe();
@@ -278,13 +317,11 @@
 
     // ---------- ENTREGADOR ----------
     async function atualizarTelaMotoboy() {
-      // saldo atualizado
       const { data: p } = await sb.from('perfis').select('*').eq('id', usuarioAtual.id).single();
       if (p) perfilAtual = p;
       $('motoboySaldo').innerText = brl(perfilAtual.saldo_creditos);
       $('avisoSaldo').classList.toggle('hidden', Number(perfilAtual.saldo_creditos) >= 1);
 
-      // corrida em andamento
       const { data: atual } = await sb.from('entregas').select('*')
         .eq('entregador_id', usuarioAtual.id).in('status', ['aceita', 'coletada'])
         .order('criado_em', { ascending: false }).limit(1);
@@ -302,7 +339,6 @@
             class="w-full bg-amber-500 text-white font-bold py-3 rounded-lg">${proximo[1]}</button>`;
       }
 
-      // disponíveis
       const lista = $('listaDisponiveis');
       if (emCorrida) {
         lista.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Finalize a corrida atual para ver novas chamadas.</p>';
@@ -339,6 +375,49 @@
       const { error } = await sb.rpc('atualizar_status_entrega', { p_id: id, p_status: status });
       if (error) $('msgMotoboy').innerText = error.message;
       atualizarTelaMotoboy();
+    }
+
+    // ---------- ADMINISTRADOR ----------
+    async function carregarAdmin() {
+      const { data: entregas } = await sb.from('entregas').select('*').order('criado_em', { ascending: false });
+      const listaEntregas = $('listaTodasEntregas');
+      if (!entregas || !entregas.length) {
+        listaEntregas.innerHTML = '<p class="text-gray-400 text-center py-2">Nenhuma entrega cadastrada.</p>';
+      } else {
+        let total = 0;
+        listaEntregas.innerHTML = entregas.map(en => {
+          if (en.status === 'concluida') total += Number(en.valor_corrida || 0);
+          const [rotulo, cor] = STATUS[en.status] || [en.status, 'bg-gray-100'];
+          return `
+            <div class="border rounded-lg p-3 space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="font-bold">${brl(en.valor_corrida)}</span>
+                <span class="text-xs font-bold px-2 py-1 rounded-full ${cor}">${rotulo}</span>
+              </div>
+              <p class="text-gray-600 text-sm"> Coleta: ${esc(en.endereco_coleta)}</p>
+              <p class="text-gray-600 text-sm"> Entrega: ${esc(en.endereco_entrega)}</p>
+              <p class="text-gray-500 text-xs"> Loja: ${en.loja_id} | Entregador: ${en.entregador_id || '—'}</p>
+            </div>`;
+        }).join('');
+        $('adminTotalEntregas').innerText = entregas.length;
+        $('adminReceitaTotal').innerText = brl(total);
+      }
+
+      const { data: perfis } = await sb.from('perfis').select('*').order('nome', { ascending: true });
+      const listaUsuarios = $('listaUsuarios');
+      if (!perfis || !perfis.length) {
+        listaUsuarios.innerHTML = '<p class="text-gray-400 text-center py-2">Nenhum usuário cadastrado.</p>';
+      } else {
+        listaUsuarios.innerHTML = perfis.map(p => `
+          <div class="border rounded-lg p-3 space-y-1">
+            <div class="flex justify-between items-center">
+              <span class="font-bold">${esc(p.nome)}</span>
+              <span class="text-xs font-bold px-2 py-1 rounded-full ${p.tipo === 'admin' ? 'bg-purple-100 text-purple-800' : p.tipo === 'loja' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}">${p.tipo}</span>
+            </div>
+            <p class="text-gray-600 text-sm"> ${esc(p.telefone || '—')}</p>
+            <p class="text-gray-500 text-xs"> ${p.email || '—'} | Saldo: ${brl(p.saldo_creditos)}</p>
+          </div>`).join('');
+      }
     }
 
     // Mantém login ao recarregar a página
